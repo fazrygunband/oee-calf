@@ -68,7 +68,7 @@ latest_month = df["Tanggal"].max().strftime("%B")
 # Inisialisasi App
 # ====================
 app = Dash(__name__, suppress_callback_exceptions=True)
-app.title = "Dashboard OEE & Losses"
+app.title = "📊 Dashboard OEE & Losses"
 
 
 # Fungsi buat KPI card
@@ -103,7 +103,8 @@ app.layout = html.Div([
     html.H1("📊 Dashboard OEE PT. Calf Indonesia", style={
         "textAlign": "center",
         "color": "#2c3e50",
-        "marginBottom": "20px"
+        "marginBottom": "30px",
+        "fontWeight": "bold"
     }),
 
     # Filter Bulan
@@ -120,7 +121,7 @@ app.layout = html.Div([
 
     # Container semua line
     html.Div(id="all-lines-container")
-], style={"backgroundColor": "#f9f9f9", "padding": "20px", "fontFamily": "Segoe UI"})
+], style={"backgroundColor": "#eef2f7", "padding": "20px", "fontFamily": "Segoe UI"})
 
 
 # ====================
@@ -157,21 +158,39 @@ def update_all_lines(bulan):
             kpi_card("OEE", oee, get_color(oee))
         ], style={"display": "flex", "gap": "15px", "marginBottom": "15px"})
 
-        # Tren OEE line tertentu
-        fig_trend = px.line(
-            df_line, x="Tanggal", y="OEE",
-            title=f"📈 Tren OEE - Line {line} ({bulan})", markers=True
-        )
-        fig_trend.update_traces(
-            marker=dict(size=8, color="#3498db"),
-            selected=dict(marker=dict(size=12, color="red")),
-            unselected=dict(marker=dict(opacity=0.5))
-        )
+        # Tentukan warna dinamis untuk tiap titik OEE
+        colors = df_line["OEE"].apply(lambda x: "#2ecc71" if x >= 0.9 else "#f39c12" if x >= 0.7 else "#e74c3c")
+
+        # Tren OEE line tertentu dengan extra hover data
+        fig_trend = go.Figure()
+        fig_trend.add_trace(go.Scatter(
+            x=df_line["Tanggal"],
+            y=df_line["OEE"],
+            mode="lines+markers",
+            line=dict(width=3, shape="spline"),
+            marker=dict(size=9, color=colors, line=dict(width=2, color="white")),
+            customdata=df_line[["Availability", "Performance", "Quality"]],
+            hovertemplate=(
+                "<b>Tanggal:</b> %{x|%d-%m-%Y}<br>"
+                "<b>OEE:</b> %{y:.1%}<br>"
+                "Availability: %{customdata[0]:.1%}<br>"
+                "Performance: %{customdata[1]:.1%}<br>"
+                "Quality: %{customdata[2]:.1%}<extra></extra>"
+            )
+        ))
+        fig_trend.add_hline(y=0.85, line_dash="dash", line_color="green",
+            annotation_text="🎯 Target 85%", annotation_position="top left")
         fig_trend.update_yaxes(tickformat=".0%")
         fig_trend.update_layout(
-            plot_bgcolor="white",
-            paper_bgcolor="white",
-            clickmode="event+select"
+            title=f"📈 Tren OEE - Line {line} ({bulan})",
+            plot_bgcolor="#f9f9f9",
+            paper_bgcolor="#f9f9f9",
+            title_font=dict(size=18, color="#2c3e50"),
+            font=dict(family="Segoe UI", size=13, color="#2c3e50"),
+            xaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.05)"),
+            yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.05)"),
+            hoverlabel=dict(bgcolor="white", font_size=12, font_family="Segoe UI"),
+            margin=dict(l=40, r=20, t=60, b=40)
         )
 
         # Pareto losses line tertentu
@@ -186,23 +205,28 @@ def update_all_lines(bulan):
             fig_pareto.add_trace(go.Bar(
                 x=pareto["Sub Kategori"], y=pareto["Loss Time"],
                 name="Loss Time",
-                marker=dict(color="#3498db"),
-                selected=dict(marker=dict(color="red")),
-                unselected=dict(marker=dict(opacity=0.5))
+                marker=dict(
+                    color=pareto["Loss Time"],
+                    colorscale="Bluered",
+                    showscale=False
+                )
             ))
             fig_pareto.add_trace(go.Scatter(
                 x=pareto["Sub Kategori"], y=pareto["Cumulative %"],
-                name="Cumulative %", yaxis="y2", mode="lines+markers"
+                name="Cumulative %", yaxis="y2", mode="lines+markers",
+                line=dict(color="orange", width=3, shape="spline"),
+                marker=dict(size=8, color="orange", line=dict(width=2, color="white"))
             ))
             fig_pareto.update_layout(
-                title="Pareto Losses",
+                title="📊 Pareto Losses",
                 yaxis=dict(title="Loss Time"),
                 yaxis2=dict(title="Cumulative %", overlaying="y", side="right", range=[0, 110]),
-                plot_bgcolor="white", paper_bgcolor="white",
-                clickmode="event+select"
+                plot_bgcolor="#f9f9f9", paper_bgcolor="#f9f9f9",
+                font=dict(family="Segoe UI", size=13, color="#2c3e50"),
+                margin=dict(l=40, r=40, t=60, b=40)
             )
 
-        # Detail Losses tabel (collapsible + reset button)
+        # Detail Losses tabel
         losses_table = dash_table.DataTable(
             id=f"losses-table-{line}",
             columns=[{"name": c, "id": c} for c in df_loss_line.columns],
@@ -281,7 +305,12 @@ def register_losses_callback(line):
             df_line = df_line[df_line["Sub Kategori"] == kategori]
 
         # Ganti NaN jadi "-" sebelum ditampilkan
-        return df_line.fillna("-").astype(str).to_dict("records")
+        return (
+            df_line.fillna("-")
+                   .replace("nan", "-")
+                   .astype(str)
+                   .to_dict("records")
+        )
 
 
 # Daftarkan callback untuk setiap line yang ada
