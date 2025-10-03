@@ -1,0 +1,7 @@
+dash
+dash-bootstrap-components
+pandas
+gspread
+oauth2client
+gunicorn
+plotly
