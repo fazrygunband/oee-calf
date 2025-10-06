@@ -30,7 +30,11 @@ layout = dbc.Container([
 # Username & password statis (bisa diganti sesuai kebutuhan)
 USERS = {
     "admin": "admin123",
-    "user1": "password1"
+    "user1": "password1",
+    "heri":"keju1",
+    "dayat":"lead1",
+    "latif":"lead2",
+    "bowo":"lead3"
 }
 
 @callback(
@@ -47,3 +51,4 @@ def do_login(n_clicks, username, password):
     if username in USERS and USERS[username] == password:
         return {"user": username}, "Login berhasil!"
     return dash.no_update, "Username atau password salah!"
+
